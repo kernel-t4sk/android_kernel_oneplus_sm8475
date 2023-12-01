@@ -5,6 +5,10 @@ SUBLEVEL = 149
 EXTRAVERSION =
 NAME = Dare mighty things
 
+# indicate that change "Kbuild: Support nested composite objects" is
+# present in the kernel so that out-of-tree modules can act upon it
+export KERNEL_SUPPORTS_NESTED_COMPOSITES := y
+
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"
 # More info can be located in ./README
@@ -522,6 +526,64 @@ KBUILD_LDFLAGS_MODULE :=
 KBUILD_LDFLAGS :=
 CLANG_FLAGS :=
 
+# ifdef OPLUS_BUG_STABILITY
+KBUILD_CFLAGS +=   -DOPLUS_BUG_STABILITY
+KBUILD_CPPFLAGS += -DOPLUS_BUG_STABILITY
+CFLAGS_KERNEL +=   -DOPLUS_BUG_STABILITY
+CFLAGS_MODULE +=   -DOPLUS_BUG_STABILITY
+# endif
+
+$(warning MSM_ARCH: -$(MSM_ARCH)-)
+ifneq ("$(MSM_ARCH)X", "waipio_tuivmX")
+# ifdef OPLUS_FEATURE_CHG_BASIC
+KBUILD_CFLAGS +=   -DOPLUS_FEATURE_CHG_BASIC
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_CHG_BASIC
+CFLAGS_KERNEL +=   -DOPLUS_FEATURE_CHG_BASIC
+CFLAGS_MODULE +=   -DOPLUS_FEATURE_CHG_BASIC
+# endif
+endif
+
+# ifdef OPLUS_FEATURE_DISPLAY
+# add OPLUS_FEATURE_DISPLAY
+KBUILD_CFLAGS +=   -DOPLUS_FEATURE_DISPLAY
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_DISPLAY
+CFLAGS_KERNEL +=   -DOPLUS_FEATURE_DISPLAY
+CFLAGS_MODULE +=   -DOPLUS_FEATURE_DISPLAY
+# endif
+
+# ifdef OPLUS_FEATURE_CAMERA_COMMON
+KBUILD_CFLAGS +=   -DOPLUS_FEATURE_CAMERA_COMMON
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_CAMERA_COMMON
+CFLAGS_KERNEL +=   -DOPLUS_FEATURE_CAMERA_COMMON
+CFLAGS_MODULE +=   -DOPLUS_FEATURE_CAMERA_COMMON
+# endif
+
+#ifdef OPLUS_FEATURE_WIFI_BDF
+KBUILD_CFLAGS +=   -DOPLUS_FEATURE_WIFI_BDF
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_WIFI_BDF
+CFLAGS_KERNEL +=   -DOPLUS_FEATURE_WIFI_BDF
+CFLAGS_MODULE +=   -DOPLUS_FEATURE_WIFI_BDF
+
+KBUILD_CFLAGS +=   -DOPLUS_FEATURE_WIFI_MAC
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_WIFI_MAC
+CFLAGS_KERNEL +=   -DOPLUS_FEATURE_WIFI_MAC
+CFLAGS_MODULE +=   -DOPLUS_FEATURE_WIFI_MAC
+
+KBUILD_CFLAGS +=   -DOPLUS_FEATURE_WIFI_WSA
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_WIFI_WSA
+CFLAGS_KERNEL +=   -DOPLUS_FEATURE_WIFI_WSA
+CFLAGS_MODULE +=   -DOPLUS_FEATURE_WIFI_WSA
+#endif /* OPLUS_FEATURE_WIFI_BDF */
+
+#ifdef OPLUS_FEATURE_WIFI_DCS_SWITCH
+KBUILD_CFLAGS +=   -DOPLUS_FEATURE_WIFI_DCS_SWITCH
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_WIFI_DCS_SWITCH
+CFLAGS_KERNEL +=   -DOPLUS_FEATURE_WIFI_DCS_SWITCH
+CFLAGS_MODULE +=   -DOPLUS_FEATURE_WIFI_DCS_SWITCH
+# endif /* OPLUS_FEATURE_WIFI_DCS_SWITCH */
+
+CC := scripts/basic/cc-wrapper $(CC)
+
 export ARCH SRCARCH CONFIG_SHELL BASH HOSTCC KBUILD_HOSTCFLAGS CROSS_COMPILE LD CC
 export CPP AR NM STRIP OBJCOPY OBJDUMP READELF PAHOLE RESOLVE_BTFIDS LEX YACC AWK INSTALLKERNEL
 export PERL PYTHON PYTHON3 CHECK CHECKFLAGS MAKE UTS_MACHINE HOSTCXX
@@ -664,7 +726,7 @@ endif
 ifeq ($(KBUILD_EXTMOD),)
 # Objects we will link into vmlinux / subdirs we need to visit
 core-y		:= init/ usr/
-drivers-y	:= drivers/ sound/
+drivers-y	:= drivers/ sound/ techpack/
 drivers-$(CONFIG_SAMPLES) += samples/
 drivers-y	+= net/ virt/
 libs-y		:= lib/
@@ -1190,6 +1252,9 @@ export MODULES_NSDEPS := $(extmod-prefix)modules.nsdeps
 
 PHONY += headers
 
+techpack-dirs := $(shell find $(srctree)/techpack -maxdepth 1 -mindepth 1 -type d -not -name ".*")
+techpack-dirs := $(subst $(srctree)/,,$(techpack-dirs))
+
 #Default location for installed headers
 ifeq ($(KBUILD_EXTMOD),)
 PHONY += archheaders archscripts
@@ -1219,9 +1284,67 @@ ifeq ($(KBUILD_EXTMOD),)
 endif
 	$(Q)$(MAKE) $(hdr-inst)=$(hdr-prefix)include/uapi
 	$(Q)$(MAKE) $(hdr-inst)=$(hdr-prefix)arch/$(SRCARCH)/include/uapi
+	$(Q)for d in $(techpack-dirs); do \
+		$(MAKE) $(hdr-inst)=$$d/include/uapi; \
+	done
+
+# ---------------------------------------------------------------------------
+# Devicetree files
+ifeq ($(KBUILD_EXTMOD),)
+ifneq ($(wildcard $(srctree)/arch/$(SRCARCH)/boot/dts/),)
+dtstree := arch/$(SRCARCH)/boot/dts
+endif
+
+else # KBUILD_EXTMOD
+# Devicetree source should live in $(KBUILD_EXTMOD)/arch/$(SRCARCH)/boot/dts/
+# But it may live inside some other folder relative to KBUILD_EXTMOD, as specified
+# by KBUILD_EXTMOD_DTS
+KBUILD_EXTMOD_DTS = arch/$(SRCARCH)/boot/dts
+ifneq ($(wildcard $(KBUILD_EXTMOD)/$(KBUILD_EXTMOD_DTS)/ $(srctree)/$(KBUILD_EXTMOD)/$(KBUILD_EXTMOD_DTS)/),)
+dtstree := $(KBUILD_EXTMOD)/$(KBUILD_EXTMOD_DTS)
+endif
+endif
+
+ifneq ($(dtstree),)
+
+%.dtb: include/config/kernel.release scripts_dtc
+	$(Q)$(MAKE) $(build)=$(dtstree) $(dtstree)/$@
+
+PHONY += dtbs dtbs_install dtbs_check
+dtbs: include/config/kernel.release scripts_dtc
+	$(Q)$(MAKE) $(build)=$(dtstree)
+
+ifneq ($(filter dtbs_check, $(MAKECMDGOALS)),)
+export CHECK_DTBS=y
+dtbs: dt_binding_check
+endif
+
+dtbs_check: dtbs
+
+dtbs_install:
+	$(Q)$(MAKE) $(dtbinst)=$(dtstree) dst=$(INSTALL_DTBS_PATH)
+
+ifdef CONFIG_OF_EARLY_FLATTREE
+all: dtbs
+endif
+
+endif
+
+PHONY += scripts_dtc
+scripts_dtc: scripts_basic
+	$(Q)$(MAKE) $(build)=scripts/dtc
+
+ifneq ($(filter dt_binding_check, $(MAKECMDGOALS)),)
+export CHECK_DT_BINDING=y
+endif
+
+PHONY += dt_binding_check
+dt_binding_check: scripts_dtc
+	$(Q)$(MAKE) $(build)=Documentation/devicetree/bindings
+
 
 ifeq ($(KBUILD_EXTMOD),)
-core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/
+core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/ io_uring/
 
 vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
@@ -1366,11 +1489,15 @@ endif
 # needs to be updated, so this check is forced on all builds
 
 uts_len := 64
-ifneq (,$(BUILD_NUMBER))
-	UTS_RELEASE=$(KERNELRELEASE)-ab$(BUILD_NUMBER)
-else
+
+#ifdef OPLUS_FEATURE_BUILD
+#ifneq (,$(BUILD_NUMBER))
+#	UTS_RELEASE=$(KERNELRELEASE)-ab$(BUILD_NUMBER)
+#else
 	UTS_RELEASE=$(KERNELRELEASE)
-endif
+#endif
+#endif OPLUS_FEATURE_BUILD
+
 define filechk_utsrelease.h
 	if [ `echo -n "$(UTS_RELEASE)" | wc -c ` -gt $(uts_len) ]; then \
 		echo '"$(UTS_RELEASE)" exceeds $(uts_len) characters' >&2;    \
@@ -1409,6 +1536,9 @@ headerdep:
 PHONY += headers_check
 headers_check:
 	@:
+	$(Q)for d in $(techpack-dirs); do \
+		$(MAKE) $(hdr-inst)=$$d/include/uapi HDRCHECK=1; \
+	done
 
 ifdef CONFIG_HEADERS_INSTALL
 prepare: headers
@@ -1434,50 +1564,6 @@ kselftest-merge:
 	$(Q)find $(srctree)/tools/testing/selftests -name config | \
 		xargs $(srctree)/scripts/kconfig/merge_config.sh -m $(objtree)/.config
 	$(Q)$(MAKE) -f $(srctree)/Makefile olddefconfig
-
-# ---------------------------------------------------------------------------
-# Devicetree files
-
-ifneq ($(wildcard $(srctree)/arch/$(SRCARCH)/boot/dts/),)
-dtstree := arch/$(SRCARCH)/boot/dts
-endif
-
-ifneq ($(dtstree),)
-
-%.dtb: include/config/kernel.release scripts_dtc
-	$(Q)$(MAKE) $(build)=$(dtstree) $(dtstree)/$@
-
-PHONY += dtbs dtbs_install dtbs_check
-dtbs: include/config/kernel.release scripts_dtc
-	$(Q)$(MAKE) $(build)=$(dtstree)
-
-ifneq ($(filter dtbs_check, $(MAKECMDGOALS)),)
-export CHECK_DTBS=y
-dtbs: dt_binding_check
-endif
-
-dtbs_check: dtbs
-
-dtbs_install:
-	$(Q)$(MAKE) $(dtbinst)=$(dtstree) dst=$(INSTALL_DTBS_PATH)
-
-ifdef CONFIG_OF_EARLY_FLATTREE
-all: dtbs
-endif
-
-endif
-
-PHONY += scripts_dtc
-scripts_dtc: scripts_basic
-	$(Q)$(MAKE) $(build)=scripts/dtc
-
-ifneq ($(filter dt_binding_check, $(MAKECMDGOALS)),)
-export CHECK_DT_BINDING=y
-endif
-
-PHONY += dt_binding_check
-dt_binding_check: scripts_dtc
-	$(Q)$(MAKE) $(build)=Documentation/devicetree/bindings
 
 # ---------------------------------------------------------------------------
 # Modules
