@@ -144,7 +144,10 @@ struct dmabuf_page_pool *dmabuf_page_pool_create(gfp_t gfp_mask, unsigned int or
 	pool->gfp_mask = gfp_mask | __GFP_COMP;
 	pool->order = order;
 	mutex_init(&pool->mutex); /* No longer used! */
+<<<<<<< HEAD
 	mutex_lock(&pool->mutex); /* Make sure anyone who attempts to acquire this hangs */
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	mutex_lock(&pool_list_lock);
 	list_add(&pool->list, &pool_list);

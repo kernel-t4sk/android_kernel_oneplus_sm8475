@@ -297,6 +297,7 @@ int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 		/*
 		 * Reuse existing anon_vma if it has no vma and only one
 		 * anon_vma child.
+<<<<<<< HEAD
 		 *
 		 * Root anon_vma is never reused:
 		 *
@@ -304,6 +305,15 @@ int anon_vma_clone(struct vm_area_struct *dst, struct vm_area_struct *src)
 		 */
 		if (!dst->anon_vma && src->anon_vma &&
 		    anon_vma->num_children < 2 &&anon_vma->num_active_vmas == 0)
+=======
+		 *
+		 * Root anon_vma is never reused:
+		 * it has self-parent reference and at least one child.
+		 */
+		if (!dst->anon_vma && src->anon_vma &&
+		    anon_vma->num_children < 2 &&
+		    anon_vma->num_active_vmas == 0)
+>>>>>>> refs/remotes/origin/android12-5.10
 			dst->anon_vma = anon_vma;
 	}
 	if (dst->anon_vma)
@@ -419,6 +429,10 @@ void unlink_anon_vmas(struct vm_area_struct *vma)
 	}
 	if (vma->anon_vma)
 		vma->anon_vma->num_active_vmas--;
+<<<<<<< HEAD
+=======
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	unlock_anon_vma_root(root);
 
 	/*
@@ -914,6 +928,7 @@ int page_referenced(struct page *page,
 
 	return rwc.contended ? -1 : pra.referenced;
 }
+EXPORT_SYMBOL_GPL(page_referenced);
 
 static bool page_mkclean_one(struct page *page, struct vm_area_struct *vma,
 			    unsigned long address, void *arg)

@@ -2,9 +2,10 @@
 #
 # MHI bus
 #
-# Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+# Copyright (c) 2021, Linaro Ltd.
 #
 
+<<<<<<< HEAD
 config MHI_BUS
 	tristate "Modem Host Interface (MHI) bus"
 	help
@@ -32,3 +33,6 @@ config MHI_BUS_DEBUG
 
 source "drivers/bus/mhi/devices/Kconfig"
 source "drivers/bus/mhi/controllers/Kconfig"
+=======
+source "drivers/bus/mhi/host/Kconfig"
+>>>>>>> refs/remotes/origin/android12-5.10

@@ -6,6 +6,10 @@
 #define __ASM_MTE_KASAN_H
 
 #include <asm/compiler.h>
+<<<<<<< HEAD
+=======
+#include <asm/cputype.h>
+>>>>>>> refs/remotes/origin/android12-5.10
 #include <asm/mte-def.h>
 
 #ifndef __ASSEMBLY__

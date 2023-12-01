@@ -355,6 +355,7 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 			dev_err(cpu_dev, "Failed to register irq %d\n", ret);
 			return ret;
 		}
+<<<<<<< HEAD
 
 		ret = irq_set_affinity_hint(c->dcvsh_irq, &c->related_cpus);
 		if (ret)
@@ -371,6 +372,15 @@ static int qcom_cpufreq_hw_cpu_init(struct cpufreq_policy *policy)
 		c->freq_limit_attr.attr.mode = 0444;
 		c->dcvsh_freq_limit = U32_MAX;
 		device_create_file(cpu_dev, &c->freq_limit_attr);
+=======
+	} else if (ret != -ENODEV) {
+		dev_err(cpu_dev, "Invalid opp table in device tree\n");
+		kfree(table);
+		return ret;
+	} else {
+		policy->fast_switch_possible = true;
+		icc_scaling_enabled = false;
+>>>>>>> refs/remotes/origin/android12-5.10
 	}
 
 	return 0;

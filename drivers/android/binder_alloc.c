@@ -214,11 +214,14 @@ static int binder_update_page_range(struct binder_alloc *alloc, int allocate,
 
 	if (mm) {
 		mmap_write_lock(mm);
+<<<<<<< HEAD
 		if (!mmget_still_valid(mm)) {
 			if (allocate == 0)
 				goto free_range;
 			goto err_no_vma;
 		}
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 		vma = alloc->vma;
 	}
 
@@ -1100,6 +1103,12 @@ int binder_alloc_shrinker_init(void)
 			list_lru_destroy(&binder_alloc_lru);
 	}
 	return ret;
+}
+
+void binder_alloc_shrinker_exit(void)
+{
+	unregister_shrinker(&binder_shrinker);
+	list_lru_destroy(&binder_alloc_lru);
 }
 
 /**

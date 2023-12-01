@@ -4609,8 +4609,20 @@ static void __sdhci_finish_mrq(struct sdhci_host *host, struct mmc_request *mrq)
 	if (host->cmd && host->cmd->mrq == mrq)
 		host->cmd = NULL;
 
+<<<<<<< HEAD
 	if (host->data_cmd && host->data_cmd->mrq == mrq)
 		host->data_cmd = NULL;
+=======
+static const struct of_device_id sdhci_msm_dt_match[] = {
+	{.compatible = "qcom,sdhci-msm-v4", .data = &sdhci_msm_mci_var},
+	{.compatible = "qcom,sdhci-msm-v5", .data = &sdhci_msm_v5_var},
+	{.compatible = "qcom,sdm670-sdhci", .data = &sdm845_sdhci_var},
+	{.compatible = "qcom,sdm845-sdhci", .data = &sdm845_sdhci_var},
+	{.compatible = "qcom,sm8250-sdhci", .data = &sm8250_sdhci_var},
+	{.compatible = "qcom,sc7180-sdhci", .data = &sdm845_sdhci_var},
+	{},
+};
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	if (host->deferred_cmd && host->deferred_cmd->mrq == mrq)
 		host->deferred_cmd = NULL;
@@ -4639,6 +4651,13 @@ static void __sdhci_finish_mrq(struct sdhci_host *host, struct mmc_request *mrq)
 
 	sdhci_del_timer(host, mrq);
 
+<<<<<<< HEAD
+=======
+	of_property_read_u32(node, "qcom,dll-config", &msm_host->dll_config);
+
+	if (of_device_is_compatible(node, "qcom,msm8916-sdhci"))
+		host->quirks2 |= SDHCI_QUIRK2_BROKEN_64_BIT_DMA;
+>>>>>>> refs/remotes/origin/android12-5.10
 }
 
 static void sdhci_finish_mrq(struct sdhci_host *host, struct mmc_request *mrq)

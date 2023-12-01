@@ -1001,6 +1001,7 @@ static int pmic_arb_read_apid_map_v5(struct spmi_pmic_arb *pmic_arb)
 	 * allowed to write to the APID.  The owner of the last (highest) APID
 	 * which has the IRQ owner bit set for a given PPID will receive
 	 * interrupts from the PPID.
+<<<<<<< HEAD
 	 *
 	 * In arbiter version 7, the APID numbering space is divided between
 	 * the primary bus (0) and secondary bus (1) such that:
@@ -1008,6 +1009,8 @@ static int pmic_arb_read_apid_map_v5(struct spmi_pmic_arb *pmic_arb)
 	 * APID = N to N+M-1 are assigned to the secondary bus
 	 * where N = number of APIDs supported by the primary bus and
 	 *       M = number of APIDs supported by the secondary bus
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 	 */
 	apidd = &pmic_arb->apid_data[pmic_arb->base_apid];
 	apid_max = pmic_arb->base_apid + pmic_arb->apid_count;

@@ -1,14 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015, Sony Mobile Communications Inc.
+<<<<<<< HEAD
  * Copyright (c) 2013, 2018-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #include <linux/kthread.h>
+=======
+ * Copyright (c) 2013, The Linux Foundation. All rights reserved.
+ */
+>>>>>>> refs/remotes/origin/android12-5.10
 #include <linux/module.h>
 #include <linux/netlink.h>
 #include <linux/qrtr.h>
 #include <linux/termios.h>	/* For TIOCINQ/OUTQ */
+<<<<<<< HEAD
 #include <linux/numa.h>
 #include <linux/spinlock.h>
 #include <linux/wait.h>
@@ -26,6 +32,14 @@
 #define QRTR_LOG_PAGE_CNT 4
 #define QRTR_INFO(ctx, x, ...)				\
 	ipc_log_string(ctx, x, ##__VA_ARGS__)
+=======
+#include <linux/spinlock.h>
+#include <linux/wait.h>
+
+#include <net/sock.h>
+
+#include "qrtr.h"
+>>>>>>> refs/remotes/origin/android12-5.10
 
 #define QRTR_PROTO_VER_1 1
 #define QRTR_PROTO_VER_2 3
@@ -33,6 +47,7 @@
 /* auto-bind range */
 #define QRTR_MIN_EPH_SOCKET 0x4000
 #define QRTR_MAX_EPH_SOCKET 0x7fff
+<<<<<<< HEAD
 
 #define QRTR_PORT_CTRL_LEGACY 0xffff
 
@@ -41,6 +56,10 @@
 #define QRTR_STATE_INIT		-1
 
 #define AID_VENDOR_QRTR	KGIDT_INIT(2906)
+=======
+#define QRTR_EPH_PORT_RANGE \
+		XA_LIMIT(QRTR_MIN_EPH_SOCKET, QRTR_MAX_EPH_SOCKET)
+>>>>>>> refs/remotes/origin/android12-5.10
 
 /**
  * struct qrtr_hdr_v1 - (I|R)PCrouter packet header version 1
@@ -108,8 +127,11 @@ struct qrtr_sock {
 	struct sock sk;
 	struct sockaddr_qrtr us;
 	struct sockaddr_qrtr peer;
+<<<<<<< HEAD
 
 	int state;
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 };
 
 static inline struct qrtr_sock *qrtr_sk(struct sock *sk)
@@ -118,13 +140,18 @@ static inline struct qrtr_sock *qrtr_sk(struct sock *sk)
 	return container_of(sk, struct qrtr_sock, sk);
 }
 
+<<<<<<< HEAD
 static unsigned int qrtr_local_nid = CONFIG_QRTR_NODE_ID;
 static unsigned int qrtr_wakeup_ms = CONFIG_QRTR_WAKEUP_MS;
+=======
+static unsigned int qrtr_local_nid = 1;
+>>>>>>> refs/remotes/origin/android12-5.10
 
 /* for node ids */
 static RADIX_TREE(qrtr_nodes, GFP_ATOMIC);
 static DEFINE_SPINLOCK(qrtr_nodes_lock);
 /* broadcast list */
+<<<<<<< HEAD
 static LIST_HEAD(qrtr_all_epts);
 /* lock for qrtr_all_epts */
 static DECLARE_RWSEM(qrtr_epts_lock);
@@ -141,6 +168,14 @@ static DEFINE_SPINLOCK(qrtr_port_lock);
 static struct sk_buff_head qrtr_backup_lo;
 static struct sk_buff_head qrtr_backup_hi;
 static struct work_struct qrtr_backup_work;
+=======
+static LIST_HEAD(qrtr_all_nodes);
+/* lock for qrtr_all_nodes and node reference */
+static DEFINE_MUTEX(qrtr_node_lock);
+
+/* local port allocation management */
+static DEFINE_XARRAY_ALLOC(qrtr_ports);
+>>>>>>> refs/remotes/origin/android12-5.10
 
 /**
  * struct qrtr_node - endpoint node
@@ -148,6 +183,7 @@ static struct work_struct qrtr_backup_work;
  * @ep: endpoint
  * @ref: reference count for node
  * @nid: node id
+<<<<<<< HEAD
  * @net_id: network cluster identifer
  * @hello_sent: hello packet sent to endpoint
  * @hello_rcvd: hello packet received from endpoint
@@ -162,22 +198,34 @@ static struct work_struct qrtr_backup_work;
  * @say_hello: scheduled work for initiating hello
  * @ws: wakeupsource avoid system suspend
  * @ilc: ipc logging context reference
+=======
+ * @qrtr_tx_flow: tree of qrtr_tx_flow, keyed by node << 32 | port
+ * @qrtr_tx_lock: lock for qrtr_tx_flow inserts
+ * @rx_queue: receive queue
+ * @item: list item for broadcast list
+>>>>>>> refs/remotes/origin/android12-5.10
  */
 struct qrtr_node {
 	struct mutex ep_lock;
 	struct qrtr_endpoint *ep;
 	struct kref ref;
 	unsigned int nid;
+<<<<<<< HEAD
 	unsigned int net_id;
 	atomic_t hello_sent;
 	atomic_t hello_rcvd;
 
 	struct radix_tree_root qrtr_tx_flow;
 	struct wait_queue_head resume_tx;
+=======
+
+	struct radix_tree_root qrtr_tx_flow;
+>>>>>>> refs/remotes/origin/android12-5.10
 	struct mutex qrtr_tx_lock; /* for qrtr_tx_flow */
 
 	struct sk_buff_head rx_queue;
 	struct list_head item;
+<<<<<<< HEAD
 
 	struct kthread_worker kworker;
 	struct task_struct *task;
@@ -193,10 +241,13 @@ struct qrtr_node {
 struct qrtr_tx_flow_waiter {
 	struct list_head node;
 	struct sock *sk;
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 };
 
 /**
  * struct qrtr_tx_flow - tx flow control
+<<<<<<< HEAD
  * @pending: number of waiting senders
  * @tx_failed: indicates that a message with confirm_rx flag was lost
  * @waiters: list of ports to notify when this flow resumes
@@ -205,11 +256,22 @@ struct qrtr_tx_flow {
 	atomic_t pending;
 	int tx_failed;
 	struct list_head waiters;
+=======
+ * @resume_tx: waiters for a resume tx from the remote
+ * @pending: number of waiting senders
+ * @tx_failed: indicates that a message with confirm_rx flag was lost
+ */
+struct qrtr_tx_flow {
+	struct wait_queue_head resume_tx;
+	int pending;
+	int tx_failed;
+>>>>>>> refs/remotes/origin/android12-5.10
 };
 
 #define QRTR_TX_FLOW_HIGH	10
 #define QRTR_TX_FLOW_LOW	5
 
+<<<<<<< HEAD
 static struct sk_buff *qrtr_alloc_ctrl_packet(struct qrtr_ctrl_pkt **pkt);
 static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 			      int type, struct sockaddr_qrtr *from,
@@ -394,6 +456,17 @@ static inline int kref_put_rwsem_lock(struct kref *kref,
 	return 0;
 }
 
+=======
+static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
+			      int type, struct sockaddr_qrtr *from,
+			      struct sockaddr_qrtr *to);
+static int qrtr_bcast_enqueue(struct qrtr_node *node, struct sk_buff *skb,
+			      int type, struct sockaddr_qrtr *from,
+			      struct sockaddr_qrtr *to);
+static struct qrtr_sock *qrtr_port_lookup(int port);
+static void qrtr_port_put(struct qrtr_sock *ipc);
+
+>>>>>>> refs/remotes/origin/android12-5.10
 /* Release node resources and free the node.
  *
  * Do not call directly, use qrtr_node_release.  To be used with
@@ -401,15 +474,22 @@ static inline int kref_put_rwsem_lock(struct kref *kref,
  */
 static void __qrtr_node_release(struct kref *kref)
 {
+<<<<<<< HEAD
 	struct qrtr_tx_flow_waiter *waiter;
 	struct qrtr_tx_flow_waiter *temp;
 	struct radix_tree_iter iter;
 	struct qrtr_tx_flow *flow;
 	struct qrtr_node *node = container_of(kref, struct qrtr_node, ref);
+=======
+	struct qrtr_node *node = container_of(kref, struct qrtr_node, ref);
+	struct radix_tree_iter iter;
+	struct qrtr_tx_flow *flow;
+>>>>>>> refs/remotes/origin/android12-5.10
 	unsigned long flags;
 	void __rcu **slot;
 
 	spin_lock_irqsave(&qrtr_nodes_lock, flags);
+<<<<<<< HEAD
 	if (node->nid != QRTR_EP_NID_AUTO) {
 		radix_tree_for_each_slot(slot, &qrtr_nodes, &iter, 0) {
 			if (node == *slot)
@@ -441,6 +521,23 @@ static void __qrtr_node_release(struct kref *kref)
 	kthread_stop(node->task);
 
 	skb_queue_purge(&node->rx_queue);
+=======
+	if (node->nid != QRTR_EP_NID_AUTO)
+		radix_tree_delete(&qrtr_nodes, node->nid);
+	spin_unlock_irqrestore(&qrtr_nodes_lock, flags);
+
+	list_del(&node->item);
+	mutex_unlock(&qrtr_node_lock);
+
+	skb_queue_purge(&node->rx_queue);
+
+	/* Free tx flow counters */
+	radix_tree_for_each_slot(slot, &node->qrtr_tx_flow, &iter, 0) {
+		flow = *slot;
+		radix_tree_iter_delete(&node->qrtr_tx_flow, &iter, slot);
+		kfree(flow);
+	}
+>>>>>>> refs/remotes/origin/android12-5.10
 	kfree(node);
 }
 
@@ -457,7 +554,11 @@ static void qrtr_node_release(struct qrtr_node *node)
 {
 	if (!node)
 		return;
+<<<<<<< HEAD
 	kref_put_rwsem_lock(&node->ref, __qrtr_node_release, &qrtr_epts_lock);
+=======
+	kref_put_mutex(&node->ref, __qrtr_node_release, &qrtr_node_lock);
+>>>>>>> refs/remotes/origin/android12-5.10
 }
 
 /**
@@ -467,6 +568,7 @@ static void qrtr_node_release(struct qrtr_node *node)
  */
 static void qrtr_tx_resume(struct qrtr_node *node, struct sk_buff *skb)
 {
+<<<<<<< HEAD
 	struct qrtr_tx_flow_waiter *waiter;
 	struct qrtr_tx_flow_waiter *temp;
 	struct qrtr_ctrl_pkt pkt = {0,};
@@ -507,6 +609,25 @@ static void qrtr_tx_resume(struct qrtr_node *node, struct sk_buff *skb)
 		kfree(waiter);
 	}
 	mutex_unlock(&node->qrtr_tx_lock);
+=======
+	struct qrtr_ctrl_pkt *pkt = (struct qrtr_ctrl_pkt *)skb->data;
+	u64 remote_node = le32_to_cpu(pkt->client.node);
+	u32 remote_port = le32_to_cpu(pkt->client.port);
+	struct qrtr_tx_flow *flow;
+	unsigned long key;
+
+	key = remote_node << 32 | remote_port;
+
+	rcu_read_lock();
+	flow = radix_tree_lookup(&node->qrtr_tx_flow, key);
+	rcu_read_unlock();
+	if (flow) {
+		spin_lock(&flow->resume_tx.lock);
+		flow->pending = 0;
+		spin_unlock(&flow->resume_tx.lock);
+		wake_up_interruptible_all(&flow->resume_tx);
+	}
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	consume_skb(skb);
 }
@@ -526,6 +647,7 @@ static void qrtr_tx_resume(struct qrtr_node *node, struct sk_buff *skb)
  *
  * Return: 1 if confirm_rx should be set, 0 otherwise or errno failure
  */
+<<<<<<< HEAD
 static int qrtr_tx_wait(struct qrtr_node *node, struct sockaddr_qrtr *to,
 			struct sock *sk, int type, unsigned int flags)
 {
@@ -535,20 +657,36 @@ static int qrtr_tx_wait(struct qrtr_node *node, struct sockaddr_qrtr *to,
 	int confirm_rx = 0;
 	long timeo;
 	long ret;
+=======
+static int qrtr_tx_wait(struct qrtr_node *node, int dest_node, int dest_port,
+			int type)
+{
+	unsigned long key = (u64)dest_node << 32 | dest_port;
+	struct qrtr_tx_flow *flow;
+	int confirm_rx = 0;
+	int ret;
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	/* Never set confirm_rx on non-data packets */
 	if (type != QRTR_TYPE_DATA)
 		return 0;
 
+<<<<<<< HEAD
 	/* Assume sk is set correctly for all data type packets */
 	timeo = sock_sndtimeo(sk, flags & MSG_DONTWAIT);
 
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 	mutex_lock(&node->qrtr_tx_lock);
 	flow = radix_tree_lookup(&node->qrtr_tx_flow, key);
 	if (!flow) {
 		flow = kzalloc(sizeof(*flow), GFP_KERNEL);
 		if (flow) {
+<<<<<<< HEAD
 			INIT_LIST_HEAD(&flow->waiters);
+=======
+			init_waitqueue_head(&flow->resume_tx);
+>>>>>>> refs/remotes/origin/android12-5.10
 			if (radix_tree_insert(&node->qrtr_tx_flow, key, flow)) {
 				kfree(flow);
 				flow = NULL;
@@ -561,6 +699,7 @@ static int qrtr_tx_wait(struct qrtr_node *node, struct sockaddr_qrtr *to,
 	if (!flow)
 		return 1;
 
+<<<<<<< HEAD
 	ret = timeo;
 	for (;;) {
 		mutex_lock(&node->qrtr_tx_lock);
@@ -608,6 +747,26 @@ static int qrtr_tx_wait(struct qrtr_node *node, struct sockaddr_qrtr *to,
 		if (!node->ep)
 			return -EPIPE;
 	}
+=======
+	spin_lock_irq(&flow->resume_tx.lock);
+	ret = wait_event_interruptible_locked_irq(flow->resume_tx,
+						  flow->pending < QRTR_TX_FLOW_HIGH ||
+						  flow->tx_failed ||
+						  !node->ep);
+	if (ret < 0) {
+		confirm_rx = ret;
+	} else if (!node->ep) {
+		confirm_rx = -EPIPE;
+	} else if (flow->tx_failed) {
+		flow->tx_failed = 0;
+		confirm_rx = 1;
+	} else {
+		flow->pending++;
+		confirm_rx = flow->pending == QRTR_TX_FLOW_LOW;
+	}
+	spin_unlock_irq(&flow->resume_tx.lock);
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	return confirm_rx;
 }
 
@@ -630,6 +789,7 @@ static void qrtr_tx_flow_failed(struct qrtr_node *node, int dest_node,
 	unsigned long key = (u64)dest_node << 32 | dest_port;
 	struct qrtr_tx_flow *flow;
 
+<<<<<<< HEAD
 	mutex_lock(&node->qrtr_tx_lock);
 	flow = radix_tree_lookup(&node->qrtr_tx_flow, key);
 	if (flow)
@@ -727,11 +887,22 @@ static int qrtr_pad_word_pskb(struct sk_buff *skb)
 	WARN_ON(skb->len != padto);
 
 	return 0;
+=======
+	rcu_read_lock();
+	flow = radix_tree_lookup(&node->qrtr_tx_flow, key);
+	rcu_read_unlock();
+	if (flow) {
+		spin_lock_irq(&flow->resume_tx.lock);
+		flow->tx_failed = 1;
+		spin_unlock_irq(&flow->resume_tx.lock);
+	}
+>>>>>>> refs/remotes/origin/android12-5.10
 }
 
 /* Pass an outgoing packet socket buffer to the endpoint driver. */
 static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 			     int type, struct sockaddr_qrtr *from,
+<<<<<<< HEAD
 			     struct sockaddr_qrtr *to, unsigned int flags)
 {
 	struct qrtr_hdr_v1 *hdr;
@@ -768,6 +939,18 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 			kfree_skb(skb);
 			return confirm_rx;
 		}
+=======
+			     struct sockaddr_qrtr *to)
+{
+	struct qrtr_hdr_v1 *hdr;
+	size_t len = skb->len;
+	int rc, confirm_rx;
+
+	confirm_rx = qrtr_tx_wait(node, to->sq_node, to->sq_port, type);
+	if (confirm_rx < 0) {
+		kfree_skb(skb);
+		return confirm_rx;
+>>>>>>> refs/remotes/origin/android12-5.10
 	}
 
 	hdr = skb_push(skb, sizeof(*hdr));
@@ -775,6 +958,7 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 	hdr->type = cpu_to_le32(type);
 	hdr->src_node_id = cpu_to_le32(from->sq_node);
 	hdr->src_port_id = cpu_to_le32(from->sq_port);
+<<<<<<< HEAD
 	if (to->sq_node == QRTR_NODE_BCAST)
 		hdr->dst_node_id = cpu_to_le32(node->nid);
 	else
@@ -806,16 +990,43 @@ static int qrtr_node_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 		kfree_skb(skb);
 	mutex_unlock(&node->ep_lock);
 
+=======
+	if (to->sq_port == QRTR_PORT_CTRL) {
+		hdr->dst_node_id = cpu_to_le32(node->nid);
+		hdr->dst_port_id = cpu_to_le32(QRTR_PORT_CTRL);
+	} else {
+		hdr->dst_node_id = cpu_to_le32(to->sq_node);
+		hdr->dst_port_id = cpu_to_le32(to->sq_port);
+	}
+
+	hdr->size = cpu_to_le32(len);
+	hdr->confirm_rx = !!confirm_rx;
+
+	rc = skb_put_padto(skb, ALIGN(len, 4) + sizeof(*hdr));
+
+	if (!rc) {
+		mutex_lock(&node->ep_lock);
+		rc = -ENODEV;
+		if (node->ep)
+			rc = node->ep->xmit(node->ep, skb);
+		else
+			kfree_skb(skb);
+		mutex_unlock(&node->ep_lock);
+	}
+>>>>>>> refs/remotes/origin/android12-5.10
 	/* Need to ensure that a subsequent message carries the otherwise lost
 	 * confirm_rx flag if we dropped this one */
 	if (rc && confirm_rx)
 		qrtr_tx_flow_failed(node, to->sq_node, to->sq_port);
 
+<<<<<<< HEAD
 	if (rc && type == QRTR_TYPE_HELLO) {
 		atomic_dec(&node->hello_sent);
 		kthread_queue_work(&node->kworker, &node->say_hello);
 	}
 
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 	return rc;
 }
 
@@ -828,12 +1039,20 @@ static struct qrtr_node *qrtr_node_lookup(unsigned int nid)
 	struct qrtr_node *node;
 	unsigned long flags;
 
+<<<<<<< HEAD
 	down_read(&qrtr_epts_lock);
+=======
+	mutex_lock(&qrtr_node_lock);
+>>>>>>> refs/remotes/origin/android12-5.10
 	spin_lock_irqsave(&qrtr_nodes_lock, flags);
 	node = radix_tree_lookup(&qrtr_nodes, nid);
 	node = qrtr_node_acquire(node);
 	spin_unlock_irqrestore(&qrtr_nodes_lock, flags);
+<<<<<<< HEAD
 	up_read(&qrtr_epts_lock);
+=======
+	mutex_unlock(&qrtr_node_lock);
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	return node;
 }
@@ -847,6 +1066,7 @@ static void qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
 {
 	unsigned long flags;
 
+<<<<<<< HEAD
 	if (nid == node->nid || nid == QRTR_EP_NID_AUTO)
 		return;
 
@@ -856,10 +1076,19 @@ static void qrtr_node_assign(struct qrtr_node *node, unsigned int nid)
 
 	if (node->nid == QRTR_EP_NID_AUTO)
 		node->nid = nid;
+=======
+	if (node->nid != QRTR_EP_NID_AUTO || nid == QRTR_EP_NID_AUTO)
+		return;
+
+	spin_lock_irqsave(&qrtr_nodes_lock, flags);
+	radix_tree_insert(&qrtr_nodes, nid, node);
+	node->nid = nid;
+>>>>>>> refs/remotes/origin/android12-5.10
 	spin_unlock_irqrestore(&qrtr_nodes_lock, flags);
 }
 
 /**
+<<<<<<< HEAD
  * qrtr_peek_pkt_size() - Peek into the packet header to get potential pkt size
  *
  * @data: Starting address of the packet which points to router header.
@@ -955,6 +1184,8 @@ static void qrtr_backup_deinit(void)
 }
 
 /**
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
  * qrtr_endpoint_post() - post incoming data
  * @ep: endpoint handle
  * @data: data pointer
@@ -967,19 +1198,26 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 	struct qrtr_node *node = ep->node;
 	const struct qrtr_hdr_v1 *v1;
 	const struct qrtr_hdr_v2 *v2;
+<<<<<<< HEAD
 	struct qrtr_ctrl_pkt *pkt;
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 	struct qrtr_sock *ipc;
 	struct sk_buff *skb;
 	struct qrtr_cb *cb;
 	size_t size;
 	unsigned int ver;
 	size_t hdrlen;
+<<<<<<< HEAD
 	int errcode;
 	int svc_id;
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	if (len == 0 || len & 3)
 		return -EINVAL;
 
+<<<<<<< HEAD
 	skb = alloc_skb_with_frags(sizeof(*v1), len, 0, &errcode, GFP_ATOMIC);
 	if (!skb) {
 		skb = qrtr_get_backup(len);
@@ -991,6 +1229,12 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 	}
 
 	skb_reserve(skb, sizeof(*v1));
+=======
+	skb = __netdev_alloc_skb(NULL, len, GFP_ATOMIC | __GFP_NOWARN);
+	if (!skb)
+		return -ENOMEM;
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	cb = (struct qrtr_cb *)skb->cb;
 
 	/* Version field in v1 is little endian, so this works for both cases */
@@ -1037,16 +1281,28 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 		goto err;
 	}
 
+<<<<<<< HEAD
 	if (cb->dst_port == QRTR_PORT_CTRL_LEGACY)
 		cb->dst_port = QRTR_PORT_CTRL;
 
 	if (!size || len != ALIGN(size, 4) + hdrlen)
 		goto err;
 
+=======
+	if (!size || len != ALIGN(size, 4) + hdrlen)
+		goto err;
+
+	if ((cb->type == QRTR_TYPE_NEW_SERVER ||
+	     cb->type == QRTR_TYPE_RESUME_TX) &&
+	    size < sizeof(struct qrtr_ctrl_pkt))
+		goto err;
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	if (cb->dst_port != QRTR_PORT_CTRL && cb->type != QRTR_TYPE_DATA &&
 	    cb->type != QRTR_TYPE_RESUME_TX)
 		goto err;
 
+<<<<<<< HEAD
 	skb->data_len = size;
 	skb->len = size;
 	skb_store_bits(skb, 0, data + hdrlen, size);
@@ -1074,16 +1330,39 @@ int qrtr_endpoint_post(struct qrtr_endpoint *ep, const void *data, size_t len)
 			kfree_skb(skb);
 			return -ENODEV;
 		}
+=======
+	skb_put_data(skb, data + hdrlen, size);
+
+	qrtr_node_assign(node, cb->src_node);
+
+	if (cb->type == QRTR_TYPE_NEW_SERVER) {
+		/* Remote node endpoint can bridge other distant nodes */
+		const struct qrtr_ctrl_pkt *pkt;
+
+		pkt = data + hdrlen;
+		qrtr_node_assign(node, le32_to_cpu(pkt->server.node));
+	}
+
+	if (cb->type == QRTR_TYPE_RESUME_TX) {
+		qrtr_tx_resume(node, skb);
+	} else {
+		ipc = qrtr_port_lookup(cb->dst_port);
+		if (!ipc)
+			goto err;
+>>>>>>> refs/remotes/origin/android12-5.10
 
 		if (sock_queue_rcv_skb(&ipc->sk, skb)) {
 			qrtr_port_put(ipc);
 			goto err;
 		}
 
+<<<<<<< HEAD
 		/* Force wakeup based on services */
 		if (!xa_load(&node->no_wake_svc, svc_id))
 			pm_wakeup_ws_event(node->ws, qrtr_wakeup_ms, true);
 
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 		qrtr_port_put(ipc);
 	}
 
@@ -1120,6 +1399,7 @@ static struct sk_buff *qrtr_alloc_ctrl_packet(struct qrtr_ctrl_pkt **pkt)
 	return skb;
 }
 
+<<<<<<< HEAD
 static bool qrtr_must_forward(struct qrtr_node *src,
 			      struct qrtr_node *dst, u32 type)
 {
@@ -1315,16 +1595,22 @@ static char * qrtr_get_device_node_name(struct qrtr_endpoint *ep)
 }
 #endif
 
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 /**
  * qrtr_endpoint_register() - register a new endpoint
  * @ep: endpoint to register
  * @nid: desired node id; may be QRTR_EP_NID_AUTO for auto-assignment
+<<<<<<< HEAD
  * @rt: flag to notify real time low latency endpoint
  * @no_wake: array of services to not wake up
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
  * Return: 0 on success; negative error code on failure
  *
  * The specified endpoint must have the xmit function pointer set on call.
  */
+<<<<<<< HEAD
 int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
 			   bool rt, struct qrtr_array *no_wake)
 {
@@ -1335,6 +1621,11 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
 	#ifdef CONFIG_OPLUS_POWERINFO_STANDBY_DEBUG
 	char *dev_name = NULL;
 	#endif
+=======
+int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int nid)
+{
+	struct qrtr_node *node;
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	if (!ep || !ep->xmit)
 		return -EINVAL;
@@ -1348,6 +1639,7 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
 	skb_queue_head_init(&node->rx_queue);
 	node->nid = QRTR_EP_NID_AUTO;
 	node->ep = ep;
+<<<<<<< HEAD
 	atomic_set(&node->hello_sent, 0);
 	atomic_set(&node->hello_rcvd, 0);
 
@@ -1397,10 +1689,24 @@ int qrtr_endpoint_register(struct qrtr_endpoint *ep, unsigned int net_id,
 	#endif
 
 	kthread_queue_work(&node->kworker, &node->say_hello);
+=======
+
+	INIT_RADIX_TREE(&node->qrtr_tx_flow, GFP_KERNEL);
+	mutex_init(&node->qrtr_tx_lock);
+
+	qrtr_node_assign(node, nid);
+
+	mutex_lock(&qrtr_node_lock);
+	list_add(&node->item, &qrtr_all_nodes);
+	mutex_unlock(&qrtr_node_lock);
+	ep->node = node;
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	return 0;
 }
 EXPORT_SYMBOL_GPL(qrtr_endpoint_register);
 
+<<<<<<< HEAD
 static void qrtr_notify_bye(u32 nid)
 {
 	struct sockaddr_qrtr src = {AF_QIPCRTR, nid, QRTR_PORT_CTRL};
@@ -1470,15 +1776,27 @@ static void qrtr_fwd_del_proc(struct qrtr_node *src, unsigned int nid)
 	}
 }
 
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 /**
  * qrtr_endpoint_unregister - unregister endpoint
  * @ep: endpoint to unregister
  */
 void qrtr_endpoint_unregister(struct qrtr_endpoint *ep)
 {
+<<<<<<< HEAD
 	struct radix_tree_iter iter;
 	struct qrtr_node *node = ep->node;
 	unsigned long flags;
+=======
+	struct qrtr_node *node = ep->node;
+	struct sockaddr_qrtr src = {AF_QIPCRTR, node->nid, QRTR_PORT_CTRL};
+	struct sockaddr_qrtr dst = {AF_QIPCRTR, qrtr_local_nid, QRTR_PORT_CTRL};
+	struct radix_tree_iter iter;
+	struct qrtr_ctrl_pkt *pkt;
+	struct qrtr_tx_flow *flow;
+	struct sk_buff *skb;
+>>>>>>> refs/remotes/origin/android12-5.10
 	void __rcu **slot;
 
 	mutex_lock(&node->ep_lock);
@@ -1486,6 +1804,7 @@ void qrtr_endpoint_unregister(struct qrtr_endpoint *ep)
 	mutex_unlock(&node->ep_lock);
 
 	/* Notify the local controller about the event */
+<<<<<<< HEAD
 	down_read(&qrtr_epts_lock);
 	spin_lock_irqsave(&qrtr_nodes_lock, flags);
 	radix_tree_for_each_slot(slot, &qrtr_nodes, &iter, 0) {
@@ -1505,6 +1824,22 @@ void qrtr_endpoint_unregister(struct qrtr_endpoint *ep)
 	/* Wake up any transmitters waiting for resume-tx from the node */
 	wake_up_interruptible_all(&node->resume_tx);
 	qrtr_log_resume_tx_node_erase(node->nid);
+=======
+	skb = qrtr_alloc_ctrl_packet(&pkt);
+	if (skb) {
+		pkt->cmd = cpu_to_le32(QRTR_TYPE_BYE);
+		qrtr_local_enqueue(NULL, skb, QRTR_TYPE_BYE, &src, &dst);
+	}
+
+	/* Wake up any transmitters waiting for resume-tx from the node */
+	mutex_lock(&node->qrtr_tx_lock);
+	radix_tree_for_each_slot(slot, &node->qrtr_tx_flow, &iter, 0) {
+		flow = *slot;
+		wake_up_interruptible_all(&flow->resume_tx);
+	}
+	mutex_unlock(&node->qrtr_tx_lock);
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	qrtr_node_release(node);
 	ep->node = NULL;
 }
@@ -1517,16 +1852,27 @@ EXPORT_SYMBOL_GPL(qrtr_endpoint_unregister);
 static struct qrtr_sock *qrtr_port_lookup(int port)
 {
 	struct qrtr_sock *ipc;
+<<<<<<< HEAD
 	unsigned long flags;
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	if (port == QRTR_PORT_CTRL)
 		port = 0;
 
+<<<<<<< HEAD
 	spin_lock_irqsave(&qrtr_port_lock, flags);
 	ipc = idr_find(&qrtr_ports, port);
 	if (ipc)
 		sock_hold(&ipc->sk);
 	spin_unlock_irqrestore(&qrtr_port_lock, flags);
+=======
+	rcu_read_lock();
+	ipc = xa_load(&qrtr_ports, port);
+	if (ipc)
+		sock_hold(&ipc->sk);
+	rcu_read_unlock();
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	return ipc;
 }
@@ -1537,6 +1883,7 @@ static void qrtr_port_put(struct qrtr_sock *ipc)
 	sock_put(&ipc->sk);
 }
 
+<<<<<<< HEAD
 static void qrtr_send_del_client(struct qrtr_sock *ipc)
 {
 	struct qrtr_ctrl_pkt *pkt;
@@ -1549,11 +1896,21 @@ static void qrtr_send_del_client(struct qrtr_sock *ipc)
 	skb = qrtr_alloc_ctrl_packet(&pkt);
 	if (!skb)
 		return;
+=======
+/* Remove port assignment. */
+static void qrtr_port_remove(struct qrtr_sock *ipc)
+{
+	struct qrtr_ctrl_pkt *pkt;
+	struct sk_buff *skb;
+	int port = ipc->us.sq_port;
+	struct sockaddr_qrtr to;
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	to.sq_family = AF_QIPCRTR;
 	to.sq_node = QRTR_NODE_BCAST;
 	to.sq_port = QRTR_PORT_CTRL;
 
+<<<<<<< HEAD
 	pkt->cmd = cpu_to_le32(QRTR_TYPE_DEL_CLIENT);
 	pkt->client.node = cpu_to_le32(ipc->us.sq_node);
 	pkt->client.port = cpu_to_le32(ipc->us.sq_port);
@@ -1594,14 +1951,35 @@ static void qrtr_port_remove(struct qrtr_sock *ipc)
 	unsigned long flags;
 
 	qrtr_send_del_client(ipc);
+=======
+	skb = qrtr_alloc_ctrl_packet(&pkt);
+	if (skb) {
+		pkt->cmd = cpu_to_le32(QRTR_TYPE_DEL_CLIENT);
+		pkt->client.node = cpu_to_le32(ipc->us.sq_node);
+		pkt->client.port = cpu_to_le32(ipc->us.sq_port);
+
+		skb_set_owner_w(skb, &ipc->sk);
+		qrtr_bcast_enqueue(NULL, skb, QRTR_TYPE_DEL_CLIENT, &ipc->us,
+				   &to);
+	}
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	if (port == QRTR_PORT_CTRL)
 		port = 0;
 
 	__sock_put(&ipc->sk);
 
+<<<<<<< HEAD
 	spin_lock_irqsave(&qrtr_port_lock, flags);
 	idr_remove(&qrtr_ports, port);
 	spin_unlock_irqrestore(&qrtr_port_lock, flags);
+=======
+	xa_erase(&qrtr_ports, port);
+
+	/* Ensure that if qrtr_port_lookup() did enter the RCU read section we
+	 * wait for it to up increment the refcount */
+	synchronize_rcu();
+>>>>>>> refs/remotes/origin/android12-5.10
 }
 
 /* Assign port number to socket.
@@ -1619,6 +1997,7 @@ static int qrtr_port_assign(struct qrtr_sock *ipc, int *port)
 	int rc;
 
 	if (!*port) {
+<<<<<<< HEAD
 		rc = idr_alloc_cyclic(&qrtr_ports, ipc, QRTR_MIN_EPH_SOCKET,
 				      QRTR_MAX_EPH_SOCKET + 1, GFP_ATOMIC);
 		if (rc >= 0)
@@ -1638,6 +2017,19 @@ static int qrtr_port_assign(struct qrtr_sock *ipc, int *port)
 	}
 
 	if (rc == -ENOSPC)
+=======
+		rc = xa_alloc(&qrtr_ports, port, ipc, QRTR_EPH_PORT_RANGE,
+				GFP_KERNEL);
+	} else if (*port < QRTR_MIN_EPH_SOCKET && !capable(CAP_NET_ADMIN)) {
+		rc = -EACCES;
+	} else if (*port == QRTR_PORT_CTRL) {
+		rc = xa_insert(&qrtr_ports, 0, ipc, GFP_KERNEL);
+	} else {
+		rc = xa_insert(&qrtr_ports, *port, ipc, GFP_KERNEL);
+	}
+
+	if (rc == -EBUSY)
+>>>>>>> refs/remotes/origin/android12-5.10
 		return -EADDRINUSE;
 	else if (rc < 0)
 		return rc;
@@ -1651,6 +2043,7 @@ static int qrtr_port_assign(struct qrtr_sock *ipc, int *port)
 static void qrtr_reset_ports(void)
 {
 	struct qrtr_sock *ipc;
+<<<<<<< HEAD
 	int id;
 
 	idr_for_each_entry(&qrtr_ports, ipc, id) {
@@ -1664,6 +2057,18 @@ static void qrtr_reset_ports(void)
 			ipc->sk.sk_error_report(&ipc->sk);
 		sock_put(&ipc->sk);
 	}
+=======
+	unsigned long index;
+
+	rcu_read_lock();
+	xa_for_each_start(&qrtr_ports, index, ipc, 1) {
+		sock_hold(&ipc->sk);
+		ipc->sk.sk_err = ENETRESET;
+		ipc->sk.sk_error_report(&ipc->sk);
+		sock_put(&ipc->sk);
+	}
+	rcu_read_unlock();
+>>>>>>> refs/remotes/origin/android12-5.10
 }
 
 /* Bind socket to address.
@@ -1675,7 +2080,10 @@ static int __qrtr_bind(struct socket *sock,
 {
 	struct qrtr_sock *ipc = qrtr_sk(sock->sk);
 	struct sock *sk = sock->sk;
+<<<<<<< HEAD
 	unsigned long flags;
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 	int port;
 	int rc;
 
@@ -1683,6 +2091,7 @@ static int __qrtr_bind(struct socket *sock,
 	if (!zapped && addr->sq_port == ipc->us.sq_port)
 		return 0;
 
+<<<<<<< HEAD
 	spin_lock_irqsave(&qrtr_port_lock, flags);
 	port = addr->sq_port;
 	rc = qrtr_port_assign(ipc, &port);
@@ -1694,13 +2103,29 @@ static int __qrtr_bind(struct socket *sock,
 	if (port == QRTR_PORT_CTRL)
 		qrtr_reset_ports();
 	spin_unlock_irqrestore(&qrtr_port_lock, flags);
+=======
+	port = addr->sq_port;
+	rc = qrtr_port_assign(ipc, &port);
+	if (rc)
+		return rc;
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	/* unbind previous, if any */
 	if (!zapped)
 		qrtr_port_remove(ipc);
 	ipc->us.sq_port = port;
+<<<<<<< HEAD
 	sock_reset_flag(sk, SOCK_ZAPPED);
 
+=======
+
+	sock_reset_flag(sk, SOCK_ZAPPED);
+
+	/* Notify all open ports about the new controller */
+	if (port == QRTR_PORT_CTRL)
+		qrtr_reset_ports();
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	return 0;
 }
 
@@ -1744,6 +2169,7 @@ static int qrtr_bind(struct socket *sock, struct sockaddr *saddr, int len)
 /* Queue packet to local peer socket. */
 static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 			      int type, struct sockaddr_qrtr *from,
+<<<<<<< HEAD
 			      struct sockaddr_qrtr *to, unsigned int flags)
 {
 	struct qrtr_sock *ipc;
@@ -1755,12 +2181,21 @@ static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 		kfree_skb(skb);
 		return 0;
 	}
+=======
+			      struct sockaddr_qrtr *to)
+{
+	struct qrtr_sock *ipc;
+	struct qrtr_cb *cb;
+
+	ipc = qrtr_port_lookup(to->sq_port);
+>>>>>>> refs/remotes/origin/android12-5.10
 	if (!ipc || &ipc->sk == skb->sk) { /* do not send to self */
 		if (ipc)
 			qrtr_port_put(ipc);
 		kfree_skb(skb);
 		return -ENODEV;
 	}
+<<<<<<< HEAD
 	/* Keep resetting NETRESET until socket is closed */
 	if (sk && sk->sk_err == ENETRESET) {
 		sock_hold(sk);
@@ -1771,6 +2206,8 @@ static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 		kfree_skb(skb);
 		return 0;
 	}
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	cb = (struct qrtr_cb *)skb->cb;
 	cb->src_node = from->sq_node;
@@ -1790,6 +2227,7 @@ static int qrtr_local_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 /* Queue packet for broadcast. */
 static int qrtr_bcast_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 			      int type, struct sockaddr_qrtr *from,
+<<<<<<< HEAD
 			      struct sockaddr_qrtr *to, unsigned int flags)
 {
 	struct sk_buff *skbn;
@@ -1799,15 +2237,31 @@ static int qrtr_bcast_enqueue(struct qrtr_node *node, struct sk_buff *skb,
 		if (node->nid == QRTR_EP_NID_AUTO && type != QRTR_TYPE_HELLO)
 			continue;
 
+=======
+			      struct sockaddr_qrtr *to)
+{
+	struct sk_buff *skbn;
+
+	mutex_lock(&qrtr_node_lock);
+	list_for_each_entry(node, &qrtr_all_nodes, item) {
+>>>>>>> refs/remotes/origin/android12-5.10
 		skbn = skb_clone(skb, GFP_KERNEL);
 		if (!skbn)
 			break;
 		skb_set_owner_w(skbn, skb->sk);
+<<<<<<< HEAD
 		qrtr_node_enqueue(node, skbn, type, from, to, flags);
 	}
 	up_read(&qrtr_epts_lock);
 
 	qrtr_local_enqueue(NULL, skb, type, from, to, flags);
+=======
+		qrtr_node_enqueue(node, skbn, type, from, to);
+	}
+	mutex_unlock(&qrtr_node_lock);
+
+	qrtr_local_enqueue(NULL, skb, type, from, to);
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	return 0;
 }
@@ -1816,6 +2270,7 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 {
 	DECLARE_SOCKADDR(struct sockaddr_qrtr *, addr, msg->msg_name);
 	int (*enqueue_fn)(struct qrtr_node *, struct sk_buff *, int,
+<<<<<<< HEAD
 			  struct sockaddr_qrtr *, struct sockaddr_qrtr *,
 			  unsigned int);
 	__le32 qrtr_type = cpu_to_le32(QRTR_TYPE_DATA);
@@ -1827,6 +2282,14 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	struct sk_buff *skb;
 	int pdata_len = 0;
 	int data_len = 0;
+=======
+			  struct sockaddr_qrtr *, struct sockaddr_qrtr *);
+	__le32 qrtr_type = cpu_to_le32(QRTR_TYPE_DATA);
+	struct qrtr_sock *ipc = qrtr_sk(sock->sk);
+	struct sock *sk = sock->sk;
+	struct qrtr_node *node;
+	struct sk_buff *skb;
+>>>>>>> refs/remotes/origin/android12-5.10
 	size_t plen;
 	u32 type;
 	int rc;
@@ -1863,7 +2326,10 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	}
 
 	node = NULL;
+<<<<<<< HEAD
 	srv_node = NULL;
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 	if (addr->sq_node == QRTR_NODE_BCAST) {
 		if (addr->sq_port != QRTR_PORT_CTRL &&
 		    qrtr_local_nid != QRTR_NODE_BCAST) {
@@ -1880,6 +2346,7 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 			return -ECONNRESET;
 		}
 		enqueue_fn = qrtr_node_enqueue;
+<<<<<<< HEAD
 		if (ipc->state > QRTR_STATE_INIT && ipc->state != node->nid)
 			ipc->state = QRTR_STATE_MULTI;
 		else if (ipc->state == QRTR_STATE_INIT)
@@ -1898,6 +2365,13 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	skb = sock_alloc_send_pskb(sk, QRTR_HDR_MAX_SIZE + (plen - data_len),
 				   pdata_len, msg->msg_flags & MSG_DONTWAIT,
 				   &rc, PAGE_ALLOC_COSTLY_ORDER);
+=======
+	}
+
+	plen = (len + 3) & ~3;
+	skb = sock_alloc_send_skb(sk, plen + QRTR_HDR_MAX_SIZE,
+				  msg->msg_flags & MSG_DONTWAIT, &rc);
+>>>>>>> refs/remotes/origin/android12-5.10
 	if (!skb) {
 		rc = -ENOMEM;
 		goto out_node;
@@ -1905,6 +2379,7 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 
 	skb_reserve(skb, QRTR_HDR_MAX_SIZE);
 
+<<<<<<< HEAD
 	/* len is used by the enqueue functions and should remain accurate
 	 * regardless of padding or allocation size
 	 */
@@ -1912,13 +2387,20 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	skb->data_len = data_len;
 	skb->len = len;
 	rc = skb_copy_datagram_from_iter(skb, 0, &msg->msg_iter, len);
+=======
+	rc = memcpy_from_msg(skb_put(skb, len), msg, len);
+>>>>>>> refs/remotes/origin/android12-5.10
 	if (rc) {
 		kfree_skb(skb);
 		goto out_node;
 	}
 
+<<<<<<< HEAD
 	if (ipc->us.sq_port == QRTR_PORT_CTRL ||
 	    addr->sq_port == QRTR_PORT_CTRL) {
+=======
+	if (ipc->us.sq_port == QRTR_PORT_CTRL) {
+>>>>>>> refs/remotes/origin/android12-5.10
 		if (len < 4) {
 			rc = -EINVAL;
 			kfree_skb(skb);
@@ -1930,6 +2412,7 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	}
 
 	type = le32_to_cpu(qrtr_type);
+<<<<<<< HEAD
 	if (addr->sq_port == QRTR_PORT_CTRL && type == QRTR_TYPE_NEW_SERVER) {
 		ipc->state = QRTR_STATE_MULTI;
 
@@ -1946,6 +2429,9 @@ static int qrtr_sendmsg(struct socket *sock, struct msghdr *msg, size_t len)
 	}
 
 	rc = enqueue_fn(node, skb, type, &ipc->us, addr, msg->msg_flags);
+=======
+	rc = enqueue_fn(node, skb, type, &ipc->us, addr);
+>>>>>>> refs/remotes/origin/android12-5.10
 	if (rc >= 0)
 		rc = len;
 
@@ -1970,20 +2456,30 @@ static int qrtr_send_resume_tx(struct qrtr_cb *cb)
 		return -EINVAL;
 
 	skb = qrtr_alloc_ctrl_packet(&pkt);
+<<<<<<< HEAD
 	if (!skb) {
 		qrtr_log_resume_tx(cb->src_node, cb->src_port,
 				   RTX_CTRL_SKB_ALLOC_FAIL);
 		qrtr_node_release(node);
 		return -ENOMEM;
 	}
+=======
+	if (!skb)
+		return -ENOMEM;
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	pkt->cmd = cpu_to_le32(QRTR_TYPE_RESUME_TX);
 	pkt->client.node = cpu_to_le32(cb->dst_node);
 	pkt->client.port = cpu_to_le32(cb->dst_port);
 
+<<<<<<< HEAD
 	ret = qrtr_node_enqueue(node, skb, QRTR_TYPE_RESUME_TX,
 				&local, &remote, 0);
 	qrtr_log_resume_tx(cb->src_node, cb->src_port, RTX_SENT_ACK);
+=======
+	ret = qrtr_node_enqueue(node, skb, QRTR_TYPE_RESUME_TX, &local, &remote);
+
+>>>>>>> refs/remotes/origin/android12-5.10
 	qrtr_node_release(node);
 
 	return ret;
@@ -1998,6 +2494,7 @@ static int qrtr_recvmsg(struct socket *sock, struct msghdr *msg,
 	struct qrtr_cb *cb;
 	int copied, rc;
 
+<<<<<<< HEAD
 
 	if (sock_flag(sk, SOCK_ZAPPED))
 		return -EADDRNOTAVAIL;
@@ -2008,6 +2505,21 @@ static int qrtr_recvmsg(struct socket *sock, struct msghdr *msg,
 		return rc;
 
 	lock_sock(sk);
+=======
+	lock_sock(sk);
+
+	if (sock_flag(sk, SOCK_ZAPPED)) {
+		release_sock(sk);
+		return -EADDRNOTAVAIL;
+	}
+
+	skb = skb_recv_datagram(sk, flags & ~MSG_DONTWAIT,
+				flags & MSG_DONTWAIT, &rc);
+	if (!skb) {
+		release_sock(sk);
+		return rc;
+	}
+>>>>>>> refs/remotes/origin/android12-5.10
 	cb = (struct qrtr_cb *)skb->cb;
 
 	copied = skb->len;
@@ -2172,6 +2684,7 @@ static int qrtr_release(struct socket *sock)
 	lock_sock(sk);
 
 	ipc = qrtr_sk(sk);
+<<<<<<< HEAD
 	if (ipc->us.sq_port == QRTR_PORT_CTRL) {
 		struct qrtr_node *node;
 
@@ -2182,10 +2695,16 @@ static int qrtr_release(struct socket *sock)
 		}
 		up_write(&qrtr_epts_lock);
 	}
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 	sk->sk_shutdown = SHUTDOWN_MASK;
 	if (!sock_flag(sk, SOCK_DEAD))
 		sk->sk_state_change(sk);
 
+<<<<<<< HEAD
+=======
+	sock_set_flag(sk, SOCK_DEAD);
+>>>>>>> refs/remotes/origin/android12-5.10
 	sock_orphan(sk);
 	sock->sk = NULL;
 
@@ -2248,7 +2767,10 @@ static int qrtr_create(struct net *net, struct socket *sock,
 	ipc->us.sq_family = AF_QIPCRTR;
 	ipc->us.sq_node = qrtr_local_nid;
 	ipc->us.sq_port = 0;
+<<<<<<< HEAD
 	ipc->state = QRTR_STATE_INIT;
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 
 	return 0;
 }
@@ -2275,9 +2797,12 @@ static int __init qrtr_proto_init(void)
 
 	qrtr_ns_init();
 
+<<<<<<< HEAD
 	qrtr_backup_init();
 	qrtr_debug_init();
 
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 	return rc;
 }
 postcore_initcall(qrtr_proto_init);
@@ -2287,9 +2812,12 @@ static void __exit qrtr_proto_fini(void)
 	qrtr_ns_remove();
 	sock_unregister(qrtr_family.family);
 	proto_unregister(&qrtr_proto);
+<<<<<<< HEAD
 
 	qrtr_backup_deinit();
 	qrtr_debug_remove();
+=======
+>>>>>>> refs/remotes/origin/android12-5.10
 }
 module_exit(qrtr_proto_fini);
 
